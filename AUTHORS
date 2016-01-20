@@ -1,0 +1,8 @@
+Original Author: fuller <fuller@daemogorgon.net>
+Project Link: https://exchange.nagios.org/directory/Plugins/Operating-Systems/Linux/check_smartmon/details
+
+Author of smartID checking: xrated (see project link)
+
+Script wrapper: http://stackoverflow.com/questions/24541427/setuid-setgid-wrapper-for-python-script
+
+Author of all other changes: Nihlaeth <info@nihlaeth.nl>
