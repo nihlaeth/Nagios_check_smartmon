@@ -1,5 +1,4 @@
 README
-$Id: README 5 2006-08-14 08:24:32Z fuller $
 
 check_smartmon is a Nagios-Plugin that uses smartmontools
 (http://smartmontools.sourceforge.net/) to check disk health status and temperature.
@@ -8,14 +7,21 @@ check_smartmon is a Nagios-Plugin that uses smartmontools
 = Installation =
 Adjust the first line to your Python binary (e.g. /usr/local/bin/python or
 /usr/bin/python) and the path to your smartctl binary (e.g.
-/usr/local/sbin/smartctl or /usr/sbin/smartctl).
+/usr/local/sbin/smartctl or /usr/sbin/smartctl). Also make sure that the
+path to smartmontools is correct.
+
+If you intend to use this script as an unprivileged user, you need to run
+        gcc -o check_smartmon scriptwrap.c
+
+Then set check_smartmon as being owned by root, and set the execute and 
+setuid bits.
 
 = Usage =
 Use `check_smartmon -h` to get a list of options. You will see the following
 output:
 
 
-        usage: check_smartmon [options]
+        usage: check_smartmon(.py) [options]
 
         options:
           --version             show program's version number and exit
