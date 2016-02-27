@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python
 
 # -*- coding: iso8859-1 -*-
 #
@@ -339,14 +339,14 @@ def vprint(level, message):
         print message
 
 
-validPartitions = []
+valid_partitions = []
 
-#Regex for Valid device name
-reValidDeviceName = '/dev/[hsv]da*'
+# Regex for Valid device name
+valid_device_name = '/dev/[hsv]da*'
 
 for partition in psutil.disk_partitions():
-    if re.search(reValidDeviceName, partition.device):
-        validPartitions.append(partition.device.strip(partition.device[-1]))
+    if re.search(valid_device_name, partition.device):
+        valid_partitions.append(partition.device.strip(partition.device[-1]))
 
 
 if __name__ == "__main__":
@@ -354,7 +354,7 @@ if __name__ == "__main__":
     (options, args) = parseCmdLine(sys.argv)
     verbosity = options.verbosity
 
-    vprint(1, "Valid Partitions are %s" % validPartitions)
+    vprint(1, "Valid Partitions are %s" % valid_partitions)
     (value, message) = checkSmartMonTools(_smartctlPath)
     if value != 0:
         exitWithMessage(3, message)
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     if not options.alldisks:
         devices = list(options.device)
     else:
-        devices = validPartitions
+        devices = valid_partitions
 
     for device in devices:
         vprint(1, "Device: %s" % device)
