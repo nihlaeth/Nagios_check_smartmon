@@ -110,9 +110,9 @@ def check_device_permissions(path):
     """
     vprint(3, "Check if %s does exist and can be read" % path)
     if not os.access(path, os.F_OK):
-        return (1, "UNKNOWN: no such device found")
+        return (3, "UNKNOWN: no such device found")
     elif not os.access(path, os.R_OK):
-        return (2, "UNKNOWN: no read permission given")
+        return (3, "UNKNOWN: no read permission given")
     else:
         return (0, "")
     return (0, "")
@@ -129,10 +129,10 @@ def check_smartmontools(path):
     vprint(3, "Check if %s does exist and can be read" % path)
     if not os.access(path, os.F_OK):
         print "UNKNOWN: cannot find %s" % path
-        sys.exit(1)
+        sys.exit(3)
     elif not os.access(path, os.X_OK):
         print "UNKNOWN: cannot execute %s" % path
-        sys.exit(2)
+        sys.exit(3)
 
 
 def call_smartmontools(path, device):
@@ -288,7 +288,7 @@ def parse_output(output, warning_temp, critical_temp):
 
     # check if smartmon could read device
     if health_status == "":
-        return (2, "UNKNOWN: could not parse output")
+        return (3, "UNKNOWN: could not parse output")
 
     # check health status
     if health_status != "PASSED":
