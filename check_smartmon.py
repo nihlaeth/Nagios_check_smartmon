@@ -265,7 +265,7 @@ def parse_output(output, warning_temp, critical_temp):
                     3,
                     "Offline_Uncorrectable: %d" % offline_uncorrectable)
             elif "ATA Error Count" in line:
-                error_count = parts[-1:]
+                error_count = int(parts[3])
                 vprint(
                     3,
                     "ATA error count: %d" % error_count)
