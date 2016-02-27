@@ -44,6 +44,7 @@ _verbosity = 0
 
 failedDisks = []
 
+
 def parseCmdLine(args):
     """Commandline parsing."""
 
@@ -341,70 +342,68 @@ if __name__ == "__main__":
     vprint(2, "Get device name")
 
     if not options.alldisks:
-      devices = list(options.device)
+        devices = list(options.device)
     else:
-      devices = validPartitions
+        devices = validPartitions
 
     for device in devices:
-      vprint(1, "Device: %s" % device)
+        vprint(1, "Device: %s" % device)
 
-      # check if we can access 'path'
-      vprint(2, "Check device")
-      (value, message) = checkDevice(device)
-      if value != 0:
-          exitWithMessage(3, message)
-      # fi
+        # check if we can access 'path'
+        vprint(2, "Check device")
+        (value, message) = checkDevice(device)
+        if value != 0:
+            exitWithMessage(3, message)
 
-      # call smartctl and parse output
-      vprint(2, "Call smartctl")
-      (
-          value,
-          message,
-          healthStatusOutput,
-          temperatureOutput,
-          id5Output,
-          id196Output,
-          id197Output,
-          id198Output,
-          device) = callSmartMonTools(_smartctlPath, device)
-      if value != 0:
-          exitWithMessage(value, message)
-      vprint(2, "Parse smartctl output")
-      (
-          healthStatus,
-          temperature,
-          id5Line,
-          id196Line,
-          id197Line,
-          id198Line,
-          device) = parseOutput(
-              healthStatusOutput,
-              temperatureOutput,
-              id5Output,
-              id196Output,
-              id197Output,
-              id198Output,
-              device)
-      vprint(2, "Generate return information")
-      (value, message, device) = createReturnInfo(
-          healthStatus,
-          temperature,
-          id5Line,
-          id196Line,
-          id197Line,
-          id198Line,
-          options.warningThreshold,
-          options.criticalThreshold,
-          device)
-      if value == 2:
-        failedDisks.append(device)
+        # call smartctl and parse output
+        vprint(2, "Call smartctl")
+        (
+            value,
+            message,
+            healthStatusOutput,
+            temperatureOutput,
+            id5Output,
+            id196Output,
+            id197Output,
+            id198Output,
+            device) = callSmartMonTools(_smartctlPath, device)
+        if value != 0:
+            exitWithMessage(value, message)
+        vprint(2, "Parse smartctl output")
+        (
+            healthStatus,
+            temperature,
+            id5Line,
+            id196Line,
+            id197Line,
+            id198Line,
+            device) = parseOutput(
+                healthStatusOutput,
+                temperatureOutput,
+                id5Output,
+                id196Output,
+                id197Output,
+                id198Output,
+                device)
+        vprint(2, "Generate return information")
+        (value, message, device) = createReturnInfo(
+            healthStatus,
+            temperature,
+            id5Line,
+            id196Line,
+            id197Line,
+            id198Line,
+            options.warningThreshold,
+            options.criticalThreshold,
+            device)
+        if value == 2:
+            failedDisks.append(device)
 
-      exitWithMessage(value, message + device)
+        exitWithMessage(value, message + device)
 
     if len(failedDisks) > 0:
-      print "Critical. Following disks are in bad state : %s" % (failedDisks)
-      exit(2)
+        print "Critical. Following disks are in bad state : %s" % (failedDisks)
+        exit(2)
     elif len(failedDisks) == 0:
-      print "OK. All disks are fine."
-      exit(0)
-
+        print "OK. All disks are fine."
+        exit(0)
