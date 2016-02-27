@@ -146,18 +146,19 @@ def call_smartmontools(path, device):
         result = subprocess.check_output(cmd, shell=True)
     except subprocess.CalledProcessError as error:
         # smartctl passes a lot of information via the return code
-        code_to_return = 3
         return_code = error.returncode
         if return_code % 2**1 > 0:
             # bit 0 is set - command line did not parse
             # output is not useful now, simply return
             message += "UNKNOWN: smartctl parsing error "
             return_code -= 2**0
+            code_to_return = 3
         if return_code % 2**2 > 0:
             # bit 1 is set - device open failed
             # output is not useful now, simply return
             message += "UNKNOWN: could not open device "
             return_code -= 2**1
+            code_to_return = 3
         if return_code % 2**3 > 0:
             # bit 2 is set - some smart or ata command failed
             # we still want to see what the output says
@@ -165,17 +166,20 @@ def call_smartmontools(path, device):
             message += "CRITICAL: some SMART or ATA command to disk "
             message += "failed "
             return_code -= 2**2
+            code_to_return = 2
         if return_code % 2**4 > 0:
             # bit 3 is set - smart status returned DISK FAILING
             # we still want to see what the output says
             result = error.output
             message += "CRITICAL: SMART statis is DISK FAILING "
             return_code -= 2**3
+            code_to_return = 2
         if return_code % 2**5 > 0:
             # bit 4 is set - prefail attributes found
             result = error.output
             message += "CRITICAL: prefail attributes found "
             return_code -= 2**4
+            code_to_return = 2
         if return_code % 2**6 > 0:
             # bit 5 is set - disk ok, but prefail attributes in the past
             result = error.output
@@ -183,16 +187,19 @@ def call_smartmontools(path, device):
             message += "WARNING: some prefail attributes were critical "
             message += "in the past "
             return_code -= 2**5
+            code_to_return = 1
         if return_code % 2**7 > 0:
             # bit 6 is set - errors recorded in error log
             result = error.output
-            message += "CRITICAL: errors recorded in error log "
+            message += "WARNING: errors recorded in error log "
             return_code -= 2**6
+            code_to_return = 1
         if return_code % 2**8 > 0:
             # bit 7 is set - device self-test log contains errors
             result = error.output
             message += "CRITICAL: self-test log contains errors "
             return_code -= 2**7
+            code_to_return = 2
     except OSError as error:
         code_to_return = 3
         message = "UNKNOWN: call exits unexpectedly (%s)" % error
