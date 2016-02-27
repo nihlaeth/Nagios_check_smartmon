@@ -72,7 +72,7 @@ The device `/dev/ad0` is used on FreeBSD systems, so if you run another system
 you must set the appropriate name.
 
 == Caveats ==
-The -a option currently does not work when using software raid or encryption,
+The -a option currently does not work when using software raid, lfs or encryption,
 since psutil reports the /dev/mapper/* device rather than the actual physical
 device.
 
