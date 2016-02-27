@@ -7,14 +7,16 @@ check_smartmon is a Nagios-Plugin that uses smartmontools
 = Installation =
 Adjust the first line to your Python binary (e.g. /usr/local/bin/python or
 /usr/bin/python) and the path to your smartctl binary (e.g.
-/usr/local/sbin/smartctl or /usr/sbin/smartctl). Also make sure that the
-path to smartmontools is correct.
+/usr/local/sbin/smartctl or /usr/sbin/smartctl). 
 
 If you intend to use this script as an unprivileged user, you need to run
         gcc -o check_smartmon scriptwrap.c
 
 Then set check_smartmon as being owned by root, and set the execute and 
 setuid bits.
+
+IMPORTANT: if you do this, make sure unprivileged users can't replace or edit
+check_smartmon.py ot they will be able to execute arbitrary code as root!
 
 = Usage =
 Use `check_smartmon -h` to get a list of options. You will see the following
