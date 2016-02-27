@@ -292,15 +292,35 @@ def createReturnInfo(
     if healthStatus[0] != "PASSED":
         return (2, "CRITICAL: device does not pass health status ", device)
     # check sectors
-    # print "id5Line : %s, id196Line:%s, id197Line:%s, id198Line:%s, device:%s" % (id5Line, id196Line, id197Line, id198Line, device)
+    # print "id5Line : %s, id196Line:%s, id197Line:%s,
+    # id198Line:%s, device:%s" % (id5Line, id196Line, id197Line,
+    # id198Line, device)
     if id5Line > 0 or id196Line > 0 or id197Line > 0 or id198Line > 0:
-        return (2, "CRITICAL: there is a problem with bad sectors on the drive. Reallocated_Sector_Ct:%d,Reallocated_Event_Count:%d,Current_Pending_Sector:%d,Offline_Uncorrectable:%d" % ( id5Line, id196Line, id197Line, id198Line ) , device )
+        return (
+            2,
+            ("CRITICAL: there is a problem with bad sectors "
+             "on the drive. Reallocated_Sector_Ct:%d,Reallocated"
+             "_Event_Count:%d,Current_Pending_Sector:%d,Offline_"
+             "Uncorrectable:%d") % (id5Line, id196Line, id197Line, id198Line),
+            device)
     if temperature > criticalThreshold:
-        return (2, "CRITICAL: device temperature (%d) exceeds critical temperature threshold (%s) " % (temperature, criticalThreshold), device)
+        return (
+            2,
+            ("CRITICAL: device temperature (%d) exceeds critical "
+             "temperature threshold (%s) ") % (temperature, criticalThreshold),
+            device)
     elif temperature > warningThreshold:
-        return (1, "WARNING: device temperature (%d) exceeds warning temperature threshold (%s) " % ( temperature, warningThreshold), device)
+        return (
+            1,
+            ("WARNING: device temperature (%d) exceeds warning "
+             "temperature threshold (%s) ") % (temperature, warningThreshold),
+            device)
     else:
-        return (0, "OK: device  is functional and stable (temperature: %d) " % ( temperature), device)
+        return (
+            0,
+            "OK: device  is functional and stable (temperature: %d) " %
+            (temperature),
+            device)
 
 
 def exitWithMessage(value, message):
