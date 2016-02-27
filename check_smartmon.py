@@ -1,4 +1,5 @@
 #!/usr/bin/python
+"""Nagios plugin for monitoring S.M.A.R.T. status."""
 
 # -*- coding: iso8859-1 -*-
 #
@@ -29,6 +30,7 @@ import os.path
 import sys
 import re
 import psutil
+import subprocess
 from optparse import OptionParser
 
 __author__ = "fuller <fuller@daemogorgon.net>"
@@ -37,17 +39,14 @@ __version__ = "$Revision$"
 
 # path to smartctl
 # TODO use which to fetch path
-_smartctlPath = "/usr/sbin/smartctl"
+_smartctl_path = "/usr/sbin/smartctl"
 
 # application wide verbosity (can be adjusted with -v [0-3])
 _verbosity = 0
 
-failedDisks = []
 
-
-def parseCmdLine(args):
+def parse_cmd_line(arguments):
     """Commandline parsing."""
-
     usage = "usage: %prog [options] device"
     version = "%%prog %s" % (__version__)
 
@@ -83,23 +82,25 @@ def parseCmdLine(args):
         metavar="TEMP",
         action="store",
         type="int",
-        dest="warningThreshold",
+        dest="warning_temp",
         default=55,
-        help="set temperature warning threshold to given temperature (default:55)")
+        help=("set temperature warning threshold to given temperature"
+              " (default:55)"))
     parser.add_option(
         "-c",
         "--critical-threshold",
         metavar="TEMP",
         action="store",
         type="int",
-        dest="criticalThreshold",
+        dest="critical_temp",
         default="60",
-        help="set temperature critical threshold to given temperature (default:60)")
+        help=("set temperature critical threshold to given temperature"
+              " (default:60)"))
 
-    return parser.parse_args(args)
+    return parser.parse_args(arguments)
 
 
-def checkDevice(path):
+def check_device_permissions(path):
     """Check if device exists and permissions are ok.
 
     Returns:
@@ -117,7 +118,7 @@ def checkDevice(path):
     return (0, "")
 
 
-def checkSmartMonTools(path):
+def check_smartmontools(path):
     """Check if smartctl is available and can be executed.
 
     Returns:
@@ -125,305 +126,196 @@ def checkSmartMonTools(path):
         - 1 no such file
         - 2 cannot execute file
     """
-
     vprint(3, "Check if %s does exist and can be read" % path)
     if not os.access(path, os.F_OK):
-        return (1, "UNKNOWN: cannot find %s" % path)
+        print "UNKNOWN: cannot find %s" % path
+        sys.exit(1)
     elif not os.access(path, os.X_OK):
-        return (2, "UNKNOWN: cannot execute %s" % path)
-    else:
-        return (0, "")
+        print "UNKNOWN: cannot execute %s" % path
+        sys.exit(2)
 
 
-def callSmartMonTools(path, device):
-    # get health status
-    cmd = "%s -H %s" % (path, device)
+def call_smartmontools(path, device):
+    """Get smartmontool output."""
+    cmd = "%s -a %s" % (path, device)
     vprint(3, "Get device health status: %s" % cmd)
-    # TODO start using subprocess - popen is deprecated as far as I know
-    (child_stdin, child_stdout, child_stderr) = os.popen3(cmd)
-    line = child_stderr.readline()
-    if len(line):
-        return (3, "UNKNOWN: call exits unexpectedly (%s)" % line, "",
-                "")
-    healthStatusOutput = ""
-    for line in child_stdout:
-        healthStatusOutput = healthStatusOutput + line
+    result = ""
+    try:
+        result = subprocess.check_output(cmd, shell=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        return (3, "UNKNOWN: call exits unexpectedly (%s)" % error)
 
-    # get temperature and sector status
-    cmd = "%s -A %s" % (path, device)
-    vprint(3, "Get device sector and temperature status: %s" % cmd)
-    (child_stdin, child_stdout, child_stderr) = os.popen3(cmd)
-    line = child_stderr.readline()
-    if len(line):
-        return (3, "UNKNOWN: call exits unexpectedly (%s)" % line, "", "")
+    return (0, result)
 
-    temperatureOutput = ""
-    id5Output = ""
-    id196Output = ""
-    id197Output = ""
-    id198Output = ""
-    for line in child_stdout:
-        id5Output = id5Output + line
-        id196Output = id196Output + line
-        id197Output = id197Output + line
-        id198Output = id198Output + line
-        temperatureOutput = temperatureOutput + line
-    return (
-        0,
-        "",
-        healthStatusOutput,
-        temperatureOutput,
-        id5Output,
-        id196Output,
-        id197Output,
-        id198Output,
-        device)
 
-def parseOutput(
-        healthMessage,
-        temperatureMessage,
-        id5Message,
-        id196Message,
-        id197Message,
-        id198Message,
-        device):
-    """Parse smartctl output
+def parse_output(output, warning_temp, critical_temp):
+    """
+    Parse smartctl output.
 
-    Returns (health status, temperature, sector status).
+    Returns status of device.
     """
     # parse health status
     #
     # look for line '=== START OF READ SMART DATA SECTION ==='
-    statusLine = ""
-    lines = healthMessage.split("\n")
-    getNext = False
-    for line in lines:
-        if getNext:
-            statusLine = line
-            break
-        elif "===" in line:
-            getNext = True
-    parts = statusLine.rstrip().split()
-    healthStatus = parts[-1:]
-    vprint(3, "Health status: %s" % healthStatus)
+    status_line = ""
+    health_status = ""
+    reallocated_sector_ct = ""
+    temperature = ""
+    reallocated_event_count = ""
+    current_pending_sector = ""
+    offline_uncorrectable = ""
 
-    # parse Reallocated_Sector_Ct
-    id5Line = 0
-    lines = id5Message.split("\n")
+    lines = output.split("\n")
     for line in lines:
-        parts = line.split()
-        if len(parts):
-            # 5 is the reallocated_sector_ct id
-            if parts[0] == "5":
-                id5Line = int(parts[9])
-                break
-    vprint(3, "Reallocated_Sector_Ct: %d" % id5Line)
+        # extract status line
+        if "overall-health self-assessment test result" in line:
+            status_line = line
+            parts = status_line.rstrip().split()
+            health_status = parts[-1:][0]
+            vprint(3, "Health status: %s" % health_status)
 
-    # parse temperature attribute line
-    temperature = 0
-    lines = temperatureMessage.split("\n")
-    for line in lines:
         parts = line.split()
-        if len(parts):
-            # 194 is the temperature value id
-            if parts[0] == "194":
+        if len(parts) > 0:
+            if parts[0] == "5" and reallocated_sector_ct == "":
+                # extract reallocated_sector_ct
+                # 5 is the reallocated_sector_ct id
+                reallocated_sector_ct = int(parts[9])
+                vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
+            elif parts[0] == "194" and temperature == "":
+                # extract temperature
+                # 194 is the temperature value id
                 temperature = int(parts[9])
-                break
-    vprint(3, "Temperature: %d" % temperature)
+                vprint(3, "Temperature: %d" % temperature)
+            elif parts[0] == "196" and reallocated_event_count == "":
+                # extract reallocated_event_count
+                # 196 is the reallocated_event_count id
+                reallocated_event_count = int(parts[9])
+                vprint(
+                    3,
+                    "Reallocated_Event_Count: %d" % reallocated_event_count)
+            elif parts[0] == "197" and current_pending_sector == "":
+                # extract current_pending_sector
+                # 197 is the current_pending_sector id
+                current_pending_sector = int(parts[9])
+                vprint(
+                    3,
+                    "Current_Pending_Sector: %d" % current_pending_sector)
+            elif parts[0] == "198" and offline_uncorrectable == "":
+                # extract offline_uncorrectable
+                # 198 is the offline_uncorrectable id
+                offline_uncorrectable = int(parts[9])
+                vprint(
+                    3,
+                    "Offline_Uncorrectable: %d" % offline_uncorrectable)
 
-    # parse Reallocated_Event_Count
-    id196Line = 0
-    lines = id196Message.split("\n")
-    for line in lines:
-        parts = line.split()
-        if len(parts):
-            # 196 is the reallocated_event_count id
-            if parts[0] == "196":
-                id196Line = int(parts[9])
-                break
-    vprint(3, "Reallocated_Event_Count: %d" % id196Line)
+    # now create the return information for this device
+    return_status = 0
+    device_status = ""
 
-    # parse Current_Pending_Sector
-    id197Line = 0
-    lines = id197Message.split("\n")
-    for line in lines:
-        parts = line.split()
-        if len(parts):
-            # 197 is the current_pending_sector id
-            if parts[0] == "197":
-                id197Line = int(parts[9])
-                break
-    vprint(3, "Current_Pending_Sector: %d" % id197Line)
+    # check if smartmon could read device
+    if health_status == "":
+        return (2, "UNKNOWN: could not parse output")
 
-    # parse Offline_Uncorrectable
-    id198Line = 0
-    lines = id198Message.split("\n")
-    for line in lines:
-        parts = line.split()
-        if len(parts):
-            # 198 is the offline_uncorrectable id
-            if parts[0] == "198":
-                id198Line = int(parts[9])
-                break
-    vprint(3, "Offline_Uncorrectable: %d" % id198Line)
-    return (
-        healthStatus,
-        temperature,
-        id5Line,
-        id196Line,
-        id197Line,
-        id198Line,
-        device)
+    # check health status
+    if health_status != "PASSED":
+        return_status = 2
+        device_status += "CRITICAL: device does not pass health status "
 
-
-def createReturnInfo(
-        healthStatus,
-        temperature,
-        id5Line,
-        id196Line,
-        id197Line,
-        id198Line,
-        warningThreshold,
-        criticalThreshold,
-        device):
-    """Create return information according to given thresholds."""
-    # this is absolutely critical!
-    # print healthStatus
-    if healthStatus[0] != "PASSED":
-        return (2, "CRITICAL: device does not pass health status ", device)
     # check sectors
-    # print "id5Line : %s, id196Line:%s, id197Line:%s,
-    # id198Line:%s, device:%s" % (id5Line, id196Line, id197Line,
-    # id198Line, device)
-    if id5Line > 0 or id196Line > 0 or id197Line > 0 or id198Line > 0:
-        return (
-            2,
-            ("CRITICAL: there is a problem with bad sectors "
-             "on the drive. Reallocated_Sector_Ct:%d,Reallocated"
-             "_Event_Count:%d,Current_Pending_Sector:%d,Offline_"
-             "Uncorrectable:%d") % (id5Line, id196Line, id197Line, id198Line),
-            device)
-    if temperature > criticalThreshold:
-        return (
-            2,
-            ("CRITICAL: device temperature (%d) exceeds critical "
-             "temperature threshold (%s) ") % (temperature, criticalThreshold),
-            device)
-    elif temperature > warningThreshold:
-        return (
-            1,
-            ("WARNING: device temperature (%d) exceeds warning "
-             "temperature threshold (%s) ") % (temperature, warningThreshold),
-            device)
-    else:
-        return (
-            0,
-            "OK: device  is functional and stable (temperature: %d) " %
-            (temperature),
-            device)
+    if reallocated_sector_ct > 0 or \
+            reallocated_event_count > 0 or \
+            current_pending_sector > 0 or \
+            offline_uncorrectable > 0:
+        return_status = 2
+        device_status += "CRITICAL: there is a problem with bad sectors "
+        device_status += "on the drive. "
+        device_status += "Reallocated_Sector_Ct:%d, " % reallocated_sector_ct
+        device_status += "Reallocated_Event_Count:%d, " % reallocated_event_count
+        device_status += "Current_Pending_Sector:%d, " % current_pending_sector
+        device_status += "Offline_Uncorrectable:%d " % offline_uncorrectable
+
+    # check temperature
+    if temperature > critical_temp:
+        return_status = 2
+        device_status += "CRITICAL: device temperature (%d)" % temperature
+        device_status += "exceeds critical temperature "
+        device_status += "threshold (%s) " % critical_temp
+    elif temperature > warning_temp:
+        # don't downgrade return status!
+        if return_status < 2:
+            return_status = 1
+        device_status += "WARNING: device temperature (%d) " % temperature
+        device_status += "exceeds warning temperature "
+        device_status += "threshold (%s) " % warning_temp
+
+    if return_status == 0:
+        # no warnings or errors, report everything is ok
+        device_status = "OK: device  is functional and stable "
+        device_status += "(temperature: %d) " % temperature
+
+    return (return_status, device_status)
 
 
-def exitWithMessage(value, message):
-    """Exit with given value and status message."""
-    vprint(1,message)
-#    sys.exit(value)
-    pass
-
-def vprint(level, message):
+def vprint(level, text):
     """Verbosity print.
 
     Decide according to the given verbosity level if the message will be
     printed to stdout.
     """
     if level <= verbosity:
-        print message
-
-
-valid_partitions = []
-
-# Regex for Valid device name
-valid_device_name = '/dev/[hsv]da*'
-
-for partition in psutil.disk_partitions():
-    if re.search(valid_device_name, partition.device):
-        valid_partitions.append(partition.device.strip(partition.device[-1]))
+        print text
 
 
 if __name__ == "__main__":
     # pylint: disable=invalid-name
-    (options, args) = parseCmdLine(sys.argv)
+    (options, args) = parse_cmd_line(sys.argv)
     verbosity = options.verbosity
 
-    vprint(1, "Valid Partitions are %s" % valid_partitions)
-    (value, message) = checkSmartMonTools(_smartctlPath)
-    if value != 0:
-        exitWithMessage(3, message)
+    check_smartmontools(_smartctl_path)
 
     vprint(2, "Get device name")
-
+    # assemble device list to be monitored
     if not options.alldisks:
-        devices = list(options.device)
+        devices = [options.device]
     else:
-        devices = valid_partitions
+        devices = []
+        # Regex for Valid device name
+        valid_device_name = '/dev/[ahsv]d.*'
+        for partition in psutil.disk_partitions():
+            if re.search(valid_device_name, partition.device):
+                devices.append(partition.device.strip(partition.device[-1]))
+        vprint(1, "Devices: %s" % devices)
 
+    return_text = ""
+    exit_status = 0
     for device in devices:
         vprint(1, "Device: %s" % device)
+        return_text += "%s: " % device
 
         # check if we can access 'path'
         vprint(2, "Check device")
-        (value, message) = checkDevice(device)
-        if value != 0:
-            exitWithMessage(3, message)
+        (return_status, message) = check_device_permissions(device)
+        if return_status != 0:
+            if exit_status < return_status:
+                exit_status = return_status
+                return_text += message
 
         # call smartctl and parse output
         vprint(2, "Call smartctl")
-        (
-            value,
-            message,
-            healthStatusOutput,
-            temperatureOutput,
-            id5Output,
-            id196Output,
-            id197Output,
-            id198Output,
-            device) = callSmartMonTools(_smartctlPath, device)
-        if value != 0:
-            exitWithMessage(value, message)
-        vprint(2, "Parse smartctl output")
-        (
-            healthStatus,
-            temperature,
-            id5Line,
-            id196Line,
-            id197Line,
-            id198Line,
-            device) = parseOutput(
-                healthStatusOutput,
-                temperatureOutput,
-                id5Output,
-                id196Output,
-                id197Output,
-                id198Output,
-                device)
-        vprint(2, "Generate return information")
-        (value, message, device) = createReturnInfo(
-            healthStatus,
-            temperature,
-            id5Line,
-            id196Line,
-            id197Line,
-            id198Line,
-            options.warningThreshold,
-            options.criticalThreshold,
-            device)
-        if value == 2:
-            failedDisks.append(device)
+        return_status, output = call_smartmontools(_smartctl_path, device)
+        if return_status != 0:
+            if exit_status < return_status:
+                exit_status = return_status
+            return_text += output
+        else:
+            vprint(2, "Parse smartctl output")
+            return_status, device_status = parse_output(
+                output,
+                options.warning_temp,
+                options.critical_temp)
+            if exit_status < return_status:
+                exit_status = return_status
+            return_text += device_status
 
-        exitWithMessage(value, message + device)
-
-    if len(failedDisks) > 0:
-        print "Critical. Following disks are in bad state : %s" % (failedDisks)
-        exit(2)
-    elif len(failedDisks) == 0:
-        print "OK. All disks are fine."
-        exit(0)
+    print return_text
+    sys.exit(exit_status)
