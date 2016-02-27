@@ -28,6 +28,7 @@ output:
           -h, --help            show this help message and exit
           -d DEVICE, --device=DEVICE
                                 device to check
+          -a, --all-disks       Check all disks
           -v LEVEL, --verbosity=LEVEL
                                 set verbosity level to LEVEL; defaults to 0 (quiet),
                                 possible values go up to 3
@@ -69,6 +70,11 @@ Example:
 
 The device `/dev/ad0` is used on FreeBSD systems, so if you run another system
 you must set the appropriate name.
+
+== Caveats ==
+The -a option currently does not work when using software raid or encryption,
+since psutil reports the /dev/mapper/* device rather than the actual physical
+device.
 
 
 = Contact =
