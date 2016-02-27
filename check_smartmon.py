@@ -159,11 +159,12 @@ def parse_output(output, warning_temp, critical_temp):
     # look for line '=== START OF READ SMART DATA SECTION ==='
     status_line = ""
     health_status = ""
-    reallocated_sector_ct = ""
-    temperature = ""
-    reallocated_event_count = ""
-    current_pending_sector = ""
-    offline_uncorrectable = ""
+    reallocated_sector_ct = 0
+    temperature = 0
+    reallocated_event_count = 0
+    current_pending_sector = 0
+    offline_uncorrectable = 0
+    error_count = 0
 
     lines = output.split("\n")
     for line in lines:
@@ -176,37 +177,51 @@ def parse_output(output, warning_temp, critical_temp):
 
         parts = line.split()
         if len(parts) > 0:
-            if parts[0] == "5" and reallocated_sector_ct == "":
+            # self test spans can also start with 5, so we
+            # need a tighter check here than elsewhere
+            if parts[0] == "5" and \
+                    parts[1] == "Reallocated_Sector_Ct" and \
+                    reallocated_sector_ct == 0:
                 # extract reallocated_sector_ct
                 # 5 is the reallocated_sector_ct id
                 reallocated_sector_ct = int(parts[9])
                 vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
-            elif parts[0] == "194" and temperature == "":
+            elif parts[0] == "194" and temperature == 0:
                 # extract temperature
                 # 194 is the temperature value id
                 temperature = int(parts[9])
                 vprint(3, "Temperature: %d" % temperature)
-            elif parts[0] == "196" and reallocated_event_count == "":
+            elif parts[0] == "196" and reallocated_event_count == 0:
                 # extract reallocated_event_count
                 # 196 is the reallocated_event_count id
                 reallocated_event_count = int(parts[9])
                 vprint(
                     3,
                     "Reallocated_Event_Count: %d" % reallocated_event_count)
-            elif parts[0] == "197" and current_pending_sector == "":
+            elif parts[0] == "197" and current_pending_sector == 0:
                 # extract current_pending_sector
                 # 197 is the current_pending_sector id
                 current_pending_sector = int(parts[9])
                 vprint(
                     3,
                     "Current_Pending_Sector: %d" % current_pending_sector)
-            elif parts[0] == "198" and offline_uncorrectable == "":
+            elif parts[0] == "198" and offline_uncorrectable == 0:
                 # extract offline_uncorrectable
                 # 198 is the offline_uncorrectable id
                 offline_uncorrectable = int(parts[9])
                 vprint(
                     3,
                     "Offline_Uncorrectable: %d" % offline_uncorrectable)
+            elif "ATA Error Count" in line:
+                error_count = parts[-1:]
+                vprint(
+                    3,
+                    "ATA error count: %d" % error_count)
+            elif "No Errors Logged" in line:
+                error_count = 0
+                vprint(
+                    3,
+                    "ATA error count: 0")
 
     # now create the return information for this device
     return_status = 0
@@ -247,6 +262,12 @@ def parse_output(output, warning_temp, critical_temp):
         device_status += "WARNING: device temperature (%d) " % temperature
         device_status += "exceeds warning temperature "
         device_status += "threshold (%s) " % warning_temp
+
+    # check error count
+    if error_count > 0:
+        if return_status < 2:
+            return_status = 1
+        device_status += "WARNING: error count %d " % error_count
 
     if return_status == 0:
         # no warnings or errors, report everything is ok
