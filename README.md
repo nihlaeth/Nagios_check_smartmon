@@ -14,7 +14,7 @@ Adjust the first line to your Python binary (e.g. `/usr/local/bin/python` or
 `/usr/bin/python`) and the path to your smartctl binary (e.g.
 `/usr/local/sbin/smartctl` or `/usr/sbin/smartctl`). 
 
-### Configuration ###
+### Unprivileged setup ###
 If you intend to use this script as an unprivileged user, you need to run
 
     gcc -o check_smartmon scriptwrap.c
