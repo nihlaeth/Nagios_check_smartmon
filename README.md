@@ -1,16 +1,23 @@
-README
+# check_smartmon #
 
 check_smartmon is a Nagios-Plugin that uses smartmontools
 (http://smartmontools.sourceforge.net/) to check disk health status and temperature.
 
 
-= Installation =
-Adjust the first line to your Python binary (e.g. /usr/local/bin/python or
-/usr/bin/python) and the path to your smartctl binary (e.g.
-/usr/local/sbin/smartctl or /usr/sbin/smartctl). 
+## Installation ##
 
+### Dependencies ###
+The script simply needs a Python interpreter with the psutil library.
+
+### Configuration ###
+Adjust the first line to your Python binary (e.g. `/usr/local/bin/python` or
+`/usr/bin/python`) and the path to your smartctl binary (e.g.
+`/usr/local/sbin/smartctl` or `/usr/sbin/smartctl`). 
+
+### Configuration ###
 If you intend to use this script as an unprivileged user, you need to run
-        gcc -o check_smartmon scriptwrap.c
+
+    gcc -o check_smartmon scriptwrap.c
 
 Then set check_smartmon as being owned by root, and set the execute and 
 setuid bits.
@@ -18,10 +25,9 @@ setuid bits.
 IMPORTANT: if you do this, make sure unprivileged users can't replace or edit
 check_smartmon.py ot they will be able to execute arbitrary code as root!
 
-= Usage =
+## Usage ##
 Use `check_smartmon -h` to get a list of options. You will see the following
 output:
-
 
         usage: check_smartmon(.py) [options]
 
@@ -41,7 +47,7 @@ output:
                                 set temperature critical threshold to given
                                 temperature (defaults to 60)
 
-== Configuration ==
+## Monitor configuration ##
 Read the Nagios documentation and create a command definition and service.like
 Example:
 
@@ -73,34 +79,30 @@ Example:
 The device `/dev/ad0` is used on FreeBSD systems, so if you run another system
 you must set the appropriate name.
 
-== Caveats ==
+### Caveats ###
 The -a option currently does not work when using software raid, lfs or encryption,
 since psutil reports the /dev/mapper/* device rather than the actual physical
 device.
 
-
-= Contact =
-Project Link: http://daemogorgon.net/check-smartmon
-Author: fuller <fuller@daemogorgon.net>
-Fork author: nihlaeth <info@nihlaeth.nl>
-
-
-= License =
- Copyright (C) 2006  daemogorgon.net
-
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License along
-   with this program; if not, write to the Free Software Foundation, Inc.,
-   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+## Contact ##
+* Project Link: http://daemogorgon.net/check-smartmon
+* Author: fuller <fuller@daemogorgon.net>
+* Fork author: nihlaeth <info@nihlaeth.nl>
 
 
+## License ##
+Copyright (C) 2006  daemogorgon.net
 
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
