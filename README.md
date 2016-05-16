@@ -23,7 +23,7 @@ Then set check_smartmon as being owned by root, and set the execute and
 setuid bits.
 
 IMPORTANT: if you do this, make sure unprivileged users can't replace or edit
-check_smartmon.py ot they will be able to execute arbitrary code as root!
+check_smartmon.py or they will be able to execute arbitrary code as root!
 
 ## Usage ##
 Use `check_smartmon -h` to get a list of options. You will see the following
