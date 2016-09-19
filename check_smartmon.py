@@ -330,8 +330,7 @@ def parse_output(output, warning_temp, critical_temp):
 
     if return_status == 0:
         # no warnings or errors, report everything is ok
-        device_status = "OK: device is functional and stable "
-        device_status += "(temperature: %d) " % temperature
+        device_status = "OK: device is functional and stable"
 
     return (return_status, device_status)
 
