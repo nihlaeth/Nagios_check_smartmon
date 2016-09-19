@@ -330,8 +330,7 @@ def parse_output(output, warning_temp, critical_temp):
 
     if return_status == 0:
         # no warnings or errors, report everything is ok
-        device_status = "OK: device  is functional and stable "
-        device_status += "(temperature: %d) " % temperature
+        device_status = "OK: device is functional and stable"
 
     return (return_status, device_status)
 
@@ -362,8 +361,13 @@ if __name__ == "__main__":
         # Regex for Valid device name
         valid_device_name = '/dev/[ahsv]d.*'
         for partition in psutil.disk_partitions():
-            if re.search(valid_device_name, partition.device):
-                devices.append(partition.device.strip(partition.device[-1]))
+            if not re.search(valid_device_name, partition.device):
+                continue
+            device_name = partition.device.strip(partition.device[-1])
+            if device_name in devices:
+                continue
+            devices.append(device_name)
+
         vprint(1, "Devices: %s" % devices)
 
     return_text = ""
