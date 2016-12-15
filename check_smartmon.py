@@ -233,6 +233,12 @@ def parse_output(output, warning_temp, critical_temp):
             parts = status_line.rstrip().split()
             health_status = parts[-1:][0]
             vprint(3, "Health status: %s" % health_status)
+        # extract status line (compatibility with all smartctl versions)
+        if "Health Status" in line:
+            status_line = line
+            parts = status_line.rstrip().split()
+            health_status = parts[-1:][0]
+            vprint(3, "Health status: %s" % health_status)
 
         parts = line.split()
         if len(parts) > 0:
@@ -291,7 +297,7 @@ def parse_output(output, warning_temp, critical_temp):
         return (3, "UNKNOWN: could not parse output")
 
     # check health status
-    if health_status != "PASSED":
+    while health_status not in ["PASSED", "OK"]:
         return_status = 2
         device_status += "CRITICAL: device does not pass health status "
 
