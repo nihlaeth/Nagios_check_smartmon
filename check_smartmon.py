@@ -251,6 +251,11 @@ def parse_output(output, warning_temp, critical_temp):
                 # 5 is the reallocated_sector_ct id
                 reallocated_sector_ct = int(parts[9])
                 vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
+            elif parts[0] == "190" and temperature == 0:
+                # extract temperature
+                # 190 can be temperature value id too
+                temperature = int(parts[9])
+                vprint(3, "Temperature: %d" % temperature)    
             elif parts[0] == "194" and temperature == 0:
                 # extract temperature
                 # 194 is the temperature value id
