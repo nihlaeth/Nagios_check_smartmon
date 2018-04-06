@@ -171,7 +171,7 @@ def call_smartmontools(path, device):
             # bit 3 is set - smart status returned DISK FAILING
             # we still want to see what the output says
             result = error.output
-            message += "CRITICAL: SMART statis is DISK FAILING "
+            message += "CRITICAL: SMART status is DISK FAILING "
             return_code -= 2**3
             code_to_return = 2
         if return_code % 2**5 > 0:
