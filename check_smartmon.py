@@ -226,6 +226,7 @@ def parse_output(output, warning_temp, critical_temp):
     error_count = 0
 
     lines = output.split("\n")
+    
     for line in lines:
         # extract status line
         if "overall-health self-assessment test result" in line:
@@ -239,60 +240,66 @@ def parse_output(output, warning_temp, critical_temp):
             parts = status_line.rstrip().split()
             health_status = parts[-1:][0]
             vprint(3, "Health status: %s" % health_status)
-
-        parts = line.split()
-        if len(parts) > 0:
-            # self test spans can also start with 5, so we
-            # need a tighter check here than elsewhere
-            if parts[0] == "5" and \
-                    parts[1] == "Reallocated_Sector_Ct" and \
-                    reallocated_sector_ct == 0:
-                # extract reallocated_sector_ct
-                # 5 is the reallocated_sector_ct id
-                reallocated_sector_ct = int(parts[9])
-                vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
-            elif parts[0] == "190" and temperature == 0:
-                # extract temperature
-                # 190 can be temperature value id too
-                temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)    
-            elif parts[0] == "194" and temperature == 0:
-                # extract temperature
-                # 194 is the temperature value id
-                temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)
-            elif parts[0] == "196" and reallocated_event_count == 0:
-                # extract reallocated_event_count
-                # 196 is the reallocated_event_count id
-                reallocated_event_count = int(parts[9])
-                vprint(
-                    3,
-                    "Reallocated_Event_Count: %d" % reallocated_event_count)
-            elif parts[0] == "197" and current_pending_sector == 0:
-                # extract current_pending_sector
-                # 197 is the current_pending_sector id
-                current_pending_sector = int(parts[9])
-                vprint(
-                    3,
-                    "Current_Pending_Sector: %d" % current_pending_sector)
-            elif parts[0] == "198" and offline_uncorrectable == 0:
-                # extract offline_uncorrectable
-                # 198 is the offline_uncorrectable id
-                offline_uncorrectable = int(parts[9])
-                vprint(
-                    3,
-                    "Offline_Uncorrectable: %d" % offline_uncorrectable)
-            elif "ATA Error Count" in line:
-                error_count = int(parts[3])
-                vprint(
-                    3,
-                    "ATA error count: %d" % error_count)
-            elif "No Errors Logged" in line:
-                error_count = 0
-                vprint(
-                    3,
-                    "ATA error count: 0")
-
+        
+        if 'NVMe Log' in output:
+            vprint(3, "Device is a NVMe, parsing specific output format")
+            if "Temperature:" in line:
+                parts = line.split()
+                temperature = int(parts[1])
+        else:
+            parts = line.split()
+            if len(parts) > 0:
+                # self test spans can also start with 5, so we
+                # need a tighter check here than elsewhere
+                if parts[0] == "5" and \
+                        parts[1] == "Reallocated_Sector_Ct" and \
+                        reallocated_sector_ct == 0:
+                    # extract reallocated_sector_ct
+                    # 5 is the reallocated_sector_ct id
+                    reallocated_sector_ct = int(parts[9])
+                    vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
+                elif parts[0] == "190" and temperature == 0:
+                    # extract temperature
+                    # 190 can be temperature value id too
+                    temperature = int(parts[9])
+                    vprint(3, "Temperature: %d" % temperature)    
+                elif parts[0] == "194" and temperature == 0:
+                    # extract temperature
+                    # 194 is the temperature value id
+                    temperature = int(parts[9])
+                    vprint(3, "Temperature: %d" % temperature)
+                elif parts[0] == "196" and reallocated_event_count == 0:
+                    # extract reallocated_event_count
+                    # 196 is the reallocated_event_count id
+                    reallocated_event_count = int(parts[9])
+                    vprint(
+                        3,
+                        "Reallocated_Event_Count: %d" % reallocated_event_count)
+                elif parts[0] == "197" and current_pending_sector == 0:
+                    # extract current_pending_sector
+                    # 197 is the current_pending_sector id
+                    current_pending_sector = int(parts[9])
+                    vprint(
+                        3,
+                        "Current_Pending_Sector: %d" % current_pending_sector)
+                elif parts[0] == "198" and offline_uncorrectable == 0:
+                    # extract offline_uncorrectable
+                    # 198 is the offline_uncorrectable id
+                    offline_uncorrectable = int(parts[9])
+                    vprint(
+                        3,
+                        "Offline_Uncorrectable: %d" % offline_uncorrectable)
+                elif "ATA Error Count" in line:
+                    error_count = int(parts[3])
+                    vprint(
+                        3,
+                        "ATA error count: %d" % error_count)
+                elif "No Errors Logged" in line:
+                    error_count = 0
+                    vprint(
+                        3,
+                        "ATA error count: 0")
+        
     # now create the return information for this device
     return_status = 0
     device_status = ""
