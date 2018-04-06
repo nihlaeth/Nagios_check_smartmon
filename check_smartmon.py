@@ -96,6 +96,14 @@ def parse_cmd_line(arguments):
         default="60",
         help=("set temperature critical threshold to given temperature"
               " (default:60)"))
+              
+    parser.add_option(
+        "-p",
+        "--performance-data",
+        action="store_true",
+        dest="perf_data_enabled",
+        default="",
+        help="Enable Nagios Performance Data output")
 
     return parser.parse_args(arguments)
 
@@ -207,7 +215,7 @@ def call_smartmontools(path, device):
     return (code_to_return, result, message)
 
 
-def parse_output(output, warning_temp, critical_temp):
+def parse_output(output, warning_temp, critical_temp, perf_data_enabled):
     """
     Parse smartctl output.
 
@@ -329,7 +337,7 @@ def parse_output(output, warning_temp, critical_temp):
     # check temperature
     if temperature > critical_temp:
         return_status = 2
-        device_status += "CRITICAL: device temperature (%d)" % temperature
+        device_status += "CRITICAL: device temperature (%d) " % temperature
         device_status += "exceeds critical temperature "
         device_status += "threshold (%s) " % critical_temp
     elif temperature > warning_temp:
@@ -348,8 +356,11 @@ def parse_output(output, warning_temp, critical_temp):
 
     if return_status == 0:
         # no warnings or errors, report everything is ok
-        device_status = "OK: device  is functional and stable "
-        device_status += "(temperature: %d) " % temperature
+        device_status = "OK: device is functional and stable "
+        device_status += "(temperature: %d)" % temperature
+        
+    if perf_data_enabled:
+        device_status += "|Temperature=%d;%d;%d" % (temperature, warning_temp, critical_temp)
 
     return (return_status, device_status)
 
@@ -412,7 +423,8 @@ if __name__ == "__main__":
             return_status, device_status = parse_output(
                 output,
                 options.warning_temp,
-                options.critical_temp)
+                options.critical_temp,
+                options.perf_data_enabled)
             if exit_status < return_status:
                 exit_status = return_status
             return_text += device_status
