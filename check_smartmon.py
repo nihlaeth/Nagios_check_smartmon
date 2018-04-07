@@ -96,6 +96,14 @@ def parse_cmd_line(arguments):
         default="60",
         help=("set temperature critical threshold to given temperature"
               " (default:60)"))
+              
+    parser.add_option(
+        "-p",
+        "--performance-data",
+        action="store_true",
+        dest="perf_data_enabled",
+        default="",
+        help="Enable Nagios Performance Data output")
 
     return parser.parse_args(arguments)
 
@@ -171,7 +179,7 @@ def call_smartmontools(path, device):
             # bit 3 is set - smart status returned DISK FAILING
             # we still want to see what the output says
             result = error.output
-            message += "CRITICAL: SMART statis is DISK FAILING "
+            message += "CRITICAL: SMART status is DISK FAILING "
             return_code -= 2**3
             code_to_return = 2
         if return_code % 2**5 > 0:
@@ -207,7 +215,7 @@ def call_smartmontools(path, device):
     return (code_to_return, result, message)
 
 
-def parse_output(output, warning_temp, critical_temp):
+def parse_output(output, warning_temp, critical_temp, perf_data_enabled):
     """
     Parse smartctl output.
 
@@ -226,6 +234,7 @@ def parse_output(output, warning_temp, critical_temp):
     error_count = 0
 
     lines = output.split("\n")
+    
     for line in lines:
         # extract status line
         if "overall-health self-assessment test result" in line:
@@ -239,60 +248,66 @@ def parse_output(output, warning_temp, critical_temp):
             parts = status_line.rstrip().split()
             health_status = parts[-1:][0]
             vprint(3, "Health status: %s" % health_status)
-
-        parts = line.split()
-        if len(parts) > 0:
-            # self test spans can also start with 5, so we
-            # need a tighter check here than elsewhere
-            if parts[0] == "5" and \
-                    parts[1] == "Reallocated_Sector_Ct" and \
-                    reallocated_sector_ct == 0:
-                # extract reallocated_sector_ct
-                # 5 is the reallocated_sector_ct id
-                reallocated_sector_ct = int(parts[9])
-                vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
-            elif parts[0] == "190" and temperature == 0:
-                # extract temperature
-                # 190 can be temperature value id too
-                temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)    
-            elif parts[0] == "194" and temperature == 0:
-                # extract temperature
-                # 194 is the temperature value id
-                temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)
-            elif parts[0] == "196" and reallocated_event_count == 0:
-                # extract reallocated_event_count
-                # 196 is the reallocated_event_count id
-                reallocated_event_count = int(parts[9])
-                vprint(
-                    3,
-                    "Reallocated_Event_Count: %d" % reallocated_event_count)
-            elif parts[0] == "197" and current_pending_sector == 0:
-                # extract current_pending_sector
-                # 197 is the current_pending_sector id
-                current_pending_sector = int(parts[9])
-                vprint(
-                    3,
-                    "Current_Pending_Sector: %d" % current_pending_sector)
-            elif parts[0] == "198" and offline_uncorrectable == 0:
-                # extract offline_uncorrectable
-                # 198 is the offline_uncorrectable id
-                offline_uncorrectable = int(parts[9])
-                vprint(
-                    3,
-                    "Offline_Uncorrectable: %d" % offline_uncorrectable)
-            elif "ATA Error Count" in line:
-                error_count = int(parts[3])
-                vprint(
-                    3,
-                    "ATA error count: %d" % error_count)
-            elif "No Errors Logged" in line:
-                error_count = 0
-                vprint(
-                    3,
-                    "ATA error count: 0")
-
+        
+        if 'NVMe Log' in output:
+            vprint(3, "Device is a NVMe, parsing specific output format")
+            if "Temperature:" in line:
+                parts = line.split()
+                temperature = int(parts[1])
+        else:
+            parts = line.split()
+            if len(parts) > 0:
+                # self test spans can also start with 5, so we
+                # need a tighter check here than elsewhere
+                if parts[0] == "5" and \
+                        parts[1] == "Reallocated_Sector_Ct" and \
+                        reallocated_sector_ct == 0:
+                    # extract reallocated_sector_ct
+                    # 5 is the reallocated_sector_ct id
+                    reallocated_sector_ct = int(parts[9])
+                    vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
+                elif parts[0] == "190" and temperature == 0:
+                    # extract temperature
+                    # 190 can be temperature value id too
+                    temperature = int(parts[9])
+                    vprint(3, "Temperature: %d" % temperature)    
+                elif parts[0] == "194" and temperature == 0:
+                    # extract temperature
+                    # 194 is the temperature value id
+                    temperature = int(parts[9])
+                    vprint(3, "Temperature: %d" % temperature)
+                elif parts[0] == "196" and reallocated_event_count == 0:
+                    # extract reallocated_event_count
+                    # 196 is the reallocated_event_count id
+                    reallocated_event_count = int(parts[9])
+                    vprint(
+                        3,
+                        "Reallocated_Event_Count: %d" % reallocated_event_count)
+                elif parts[0] == "197" and current_pending_sector == 0:
+                    # extract current_pending_sector
+                    # 197 is the current_pending_sector id
+                    current_pending_sector = int(parts[9])
+                    vprint(
+                        3,
+                        "Current_Pending_Sector: %d" % current_pending_sector)
+                elif parts[0] == "198" and offline_uncorrectable == 0:
+                    # extract offline_uncorrectable
+                    # 198 is the offline_uncorrectable id
+                    offline_uncorrectable = int(parts[9])
+                    vprint(
+                        3,
+                        "Offline_Uncorrectable: %d" % offline_uncorrectable)
+                elif "ATA Error Count" in line:
+                    error_count = int(parts[3])
+                    vprint(
+                        3,
+                        "ATA error count: %d" % error_count)
+                elif "No Errors Logged" in line:
+                    error_count = 0
+                    vprint(
+                        3,
+                        "ATA error count: 0")
+        
     # now create the return information for this device
     return_status = 0
     device_status = ""
@@ -322,7 +337,7 @@ def parse_output(output, warning_temp, critical_temp):
     # check temperature
     if temperature > critical_temp:
         return_status = 2
-        device_status += "CRITICAL: device temperature (%d)" % temperature
+        device_status += "CRITICAL: device temperature (%d) " % temperature
         device_status += "exceeds critical temperature "
         device_status += "threshold (%s) " % critical_temp
     elif temperature > warning_temp:
@@ -341,8 +356,11 @@ def parse_output(output, warning_temp, critical_temp):
 
     if return_status == 0:
         # no warnings or errors, report everything is ok
-        device_status = "OK: device  is functional and stable "
-        device_status += "(temperature: %d) " % temperature
+        device_status = "OK: device is functional and stable "
+        device_status += "(temperature: %d)" % temperature
+        
+    if perf_data_enabled:
+        device_status += "|Temperature=%d;%d;%d" % (temperature, warning_temp, critical_temp)
 
     return (return_status, device_status)
 
@@ -405,7 +423,8 @@ if __name__ == "__main__":
             return_status, device_status = parse_output(
                 output,
                 options.warning_temp,
-                options.critical_temp)
+                options.critical_temp,
+                options.perf_data_enabled)
             if exit_status < return_status:
                 exit_status = return_status
             return_text += device_status

@@ -46,6 +46,8 @@ output:
           -c TEMP, --critical-threshold=TEMP
                                 set temperature critical threshold to given
                                 temperature (defaults to 60)
+          -p, --performance-data
+                                enable the Nagios performance output format
 
 ## Monitor configuration ##
 Read the Nagios documentation and create a command definition and service.like
