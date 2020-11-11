@@ -128,10 +128,10 @@ def check_smartmontools(path):
     """
     vprint(3, "Check if %s does exist and can be read" % path)
     if not os.access(path, os.F_OK):
-        print "UNKNOWN: cannot find %s" % path
+        print("UNKNOWN: cannot find %s" % path)
         sys.exit(3)
     elif not os.access(path, os.X_OK):
-        print "UNKNOWN: cannot execute %s" % path
+        print("UNKNOWN: cannot execute %s" % path)
         sys.exit(3)
 
 
@@ -354,7 +354,7 @@ def vprint(level, text):
     printed to stdout.
     """
     if level <= verbosity:
-        print text
+        print(text)
 
 
 if __name__ == "__main__":
@@ -410,5 +410,5 @@ if __name__ == "__main__":
                 exit_status = return_status
             return_text += device_status
 
-    print return_text
+    print(return_text)
     sys.exit(exit_status)
