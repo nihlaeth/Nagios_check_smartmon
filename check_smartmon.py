@@ -143,7 +143,7 @@ def call_smartmontools(path, device):
     message = ""
     code_to_return = 0
     try:
-        result = subprocess.check_output(cmd, shell=True)
+        result = subprocess.check_output(cmd, shell=True, encoding='utf-8')
     except subprocess.CalledProcessError as error:
         # smartctl passes a lot of information via the return code
         return_code = error.returncode
@@ -255,7 +255,7 @@ def parse_output(output, warning_temp, critical_temp):
                 # extract temperature
                 # 190 can be temperature value id too
                 temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)    
+                vprint(3, "Temperature: %d" % temperature)
             elif parts[0] == "194" and temperature == 0:
                 # extract temperature
                 # 194 is the temperature value id
