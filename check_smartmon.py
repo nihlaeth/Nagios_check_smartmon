@@ -380,6 +380,7 @@ if __name__ == "__main__":
             if exit_status < return_status:
                 exit_status = return_status
                 return_text += message
+            continue
 
         # call smartctl and parse output
         vprint(2, "Call smartctl")
