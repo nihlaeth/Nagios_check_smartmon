@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """Nagios plugin for monitoring S.M.A.R.T. status."""
 
 # -*- coding: iso8859-1 -*-
@@ -48,7 +48,7 @@ _verbosity = 0
 def parse_cmd_line(arguments):
     """Commandline parsing."""
     usage = "usage: %prog [options] device"
-    version = "%%prog %s" % (__version__)
+    version = f"%%prog {__version__}"
 
     parser = OptionParser(usage=usage, version=version)
     parser.add_option(
@@ -108,7 +108,7 @@ def check_device_permissions(path):
         - 1 no such device
         - 2 no read permission given
     """
-    vprint(3, "Check if %s does exist and can be read" % path)
+    vprint(3, f"Check if {path} does exist and can be read")
     if not os.access(path, os.F_OK):
         return (3, "UNKNOWN: no such device found")
     elif not os.access(path, os.R_OK):
@@ -126,19 +126,19 @@ def check_smartmontools(path):
         - 1 no such file
         - 2 cannot execute file
     """
-    vprint(3, "Check if %s does exist and can be read" % path)
+    vprint(3, f"Check if {path} does exist and can be read")
     if not os.access(path, os.F_OK):
-        print "UNKNOWN: cannot find %s" % path
+        print(f"UNKNOWN: cannot find {path}")
         sys.exit(3)
     elif not os.access(path, os.X_OK):
-        print "UNKNOWN: cannot execute %s" % path
+        print(f"UNKNOWN: cannot execute {path}")
         sys.exit(3)
 
 
 def call_smartmontools(path, device):
     """Get smartmontool output."""
-    cmd = "%s -a %s" % (path, device)
-    vprint(3, "Get device health status: %s" % cmd)
+    cmd = f"{path} -d sat -a {device}"
+    vprint(3, f"Get device health status: {cmd}")
     result = ""
     message = ""
     code_to_return = 0
@@ -163,8 +163,7 @@ def call_smartmontools(path, device):
             # bit 2 is set - some smart or ata command failed
             # we still want to see what the output says
             result = error.output
-            message += "CRITICAL: some SMART or ATA command to disk "
-            message += "failed "
+            message += "CRITICAL: some SMART or ATA command to disk failed "
             return_code -= 2**2
             code_to_return = 2
         if return_code % 2**4 > 0:
@@ -202,7 +201,7 @@ def call_smartmontools(path, device):
             code_to_return = 2
     except OSError as error:
         code_to_return = 3
-        message = "UNKNOWN: call exits unexpectedly (%s)" % error
+        message = f"UNKNOWN: call exits unexpectedly ({error})"
 
     return (code_to_return, result, message)
 
@@ -225,20 +224,20 @@ def parse_output(output, warning_temp, critical_temp):
     offline_uncorrectable = 0
     error_count = 0
 
-    lines = output.split("\n")
+    lines = output.decode(sys.getdefaultencoding()).split("\n")
     for line in lines:
         # extract status line
         if "overall-health self-assessment test result" in line:
             status_line = line
             parts = status_line.rstrip().split()
             health_status = parts[-1:][0]
-            vprint(3, "Health status: %s" % health_status)
+            vprint(3, f"Health status: {health_status}")
         # extract status line (compatibility with all smartctl versions)
         if "Health Status" in line:
             status_line = line
             parts = status_line.rstrip().split()
             health_status = parts[-1:][0]
-            vprint(3, "Health status: %s" % health_status)
+            vprint(3, f"Health status: {health_status}")
 
         parts = line.split()
         if len(parts) > 0:
@@ -250,48 +249,39 @@ def parse_output(output, warning_temp, critical_temp):
                 # extract reallocated_sector_ct
                 # 5 is the reallocated_sector_ct id
                 reallocated_sector_ct = int(parts[9])
-                vprint(3, "Reallocated_Sector_Ct: %d" % reallocated_sector_ct)
+                vprint(3, f"Reallocated_Sector_Ct: {reallocated_sector_ct}")
             elif parts[0] == "190" and temperature == 0:
                 # extract temperature
                 # 190 can be temperature value id too
                 temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)    
+                vprint(3, f"Temperature: {temperature}")
             elif parts[0] == "194" and temperature == 0:
                 # extract temperature
                 # 194 is the temperature value id
                 temperature = int(parts[9])
-                vprint(3, "Temperature: %d" % temperature)
+                vprint(3, f"Temperature: {temperature}")
             elif parts[0] == "196" and reallocated_event_count == 0:
                 # extract reallocated_event_count
                 # 196 is the reallocated_event_count id
                 reallocated_event_count = int(parts[9])
                 vprint(
-                    3,
-                    "Reallocated_Event_Count: %d" % reallocated_event_count)
+                    3, f"Reallocated_Event_Count: {reallocated_event_count}")
             elif parts[0] == "197" and current_pending_sector == 0:
                 # extract current_pending_sector
                 # 197 is the current_pending_sector id
                 current_pending_sector = int(parts[9])
-                vprint(
-                    3,
-                    "Current_Pending_Sector: %d" % current_pending_sector)
+                vprint(3, f"Current_Pending_Sector: {current_pending_sector}")
             elif parts[0] == "198" and offline_uncorrectable == 0:
                 # extract offline_uncorrectable
                 # 198 is the offline_uncorrectable id
                 offline_uncorrectable = int(parts[9])
-                vprint(
-                    3,
-                    "Offline_Uncorrectable: %d" % offline_uncorrectable)
+                vprint(3, f"Offline_Uncorrectable: {offline_uncorrectable}")
             elif "ATA Error Count" in line:
                 error_count = int(parts[3])
-                vprint(
-                    3,
-                    "ATA error count: %d" % error_count)
+                vprint(3, f"ATA error count: {error_count}")
             elif "No Errors Logged" in line:
                 error_count = 0
-                vprint(
-                    3,
-                    "ATA error count: 0")
+                vprint(3, "ATA error count: 0")
 
     # now create the return information for this device
     return_status = 0
@@ -314,35 +304,35 @@ def parse_output(output, warning_temp, critical_temp):
         return_status = 2
         device_status += "CRITICAL: there is a problem with bad sectors "
         device_status += "on the drive. "
-        device_status += "Reallocated_Sector_Ct:%d, " % reallocated_sector_ct
-        device_status += "Reallocated_Event_Count:%d, " % reallocated_event_count
-        device_status += "Current_Pending_Sector:%d, " % current_pending_sector
-        device_status += "Offline_Uncorrectable:%d " % offline_uncorrectable
+        device_status += f"Reallocated_Sector_Ct:{reallocated_sector_ct}"
+        device_status += f"Reallocated_Event_Count:{reallocated_event_count}"
+        device_status += f"Current_Pending_Sector:{current_pending_sector}"
+        device_status += f"Offline_Uncorrectable:{offline_uncorrectable}"
 
     # check temperature
     if temperature > critical_temp:
         return_status = 2
-        device_status += "CRITICAL: device temperature (%d)" % temperature
-        device_status += "exceeds critical temperature "
-        device_status += "threshold (%s) " % critical_temp
+        device_status += f"CRITICAL: device temperature ({temperature})"
+        device_status += f"exceeds critical temperature "
+        device_status += f"threshold ({critical_temp})"
     elif temperature > warning_temp:
         # don't downgrade return status!
         if return_status < 2:
             return_status = 1
-        device_status += "WARNING: device temperature (%d) " % temperature
-        device_status += "exceeds warning temperature "
-        device_status += "threshold (%s) " % warning_temp
+        device_status += f"WARNING: device temperature ({temperature})"
+        device_status += f"exceeds warning temperature "
+        device_status += f"threshold ({warning_temp})"
 
     # check error count
     if error_count > 0:
         if return_status < 2:
             return_status = 1
-        device_status += "WARNING: error count %d " % error_count
+        device_status += f"WARNING: error count {error_count}"
 
     if return_status == 0:
         # no warnings or errors, report everything is ok
-        device_status = "OK: device  is functional and stable "
-        device_status += "(temperature: %d) " % temperature
+        device_status = "OK: device is functional and stable"
+        device_status += f" (temperature: {temperature})"
 
     return (return_status, device_status)
 
@@ -354,7 +344,7 @@ def vprint(level, text):
     printed to stdout.
     """
     if level <= verbosity:
-        print text
+        print(text)
 
 
 if __name__ == "__main__":
@@ -375,13 +365,13 @@ if __name__ == "__main__":
         for partition in psutil.disk_partitions():
             if re.search(valid_device_name, partition.device):
                 devices.append(partition.device.strip(partition.device[-1]))
-        vprint(1, "Devices: %s" % devices)
+        vprint(1, f"Devices: {devices}")
 
     return_text = ""
     exit_status = 0
     for device in devices:
-        vprint(1, "Device: %s" % device)
-        return_text += "%s: " % device
+        vprint(1, f"Device: {device}")
+        return_text += f"{device}: "
 
         # check if we can access 'path'
         vprint(2, "Check device")
@@ -410,5 +400,6 @@ if __name__ == "__main__":
                 exit_status = return_status
             return_text += device_status
 
-    print return_text
+    print(return_text)
     sys.exit(exit_status)
+
